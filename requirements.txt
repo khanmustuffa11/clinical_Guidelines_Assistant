@@ -1,0 +1,29 @@
+# Core LLM + RAG framework
+langchain>=0.1.0
+
+# OpenAI provider (LLMs + embeddings)
+langchain-openai>=0.1.0
+openai>=1.0.0
+
+# Vector database integration
+langchain-chroma>=0.1.0
+chromadb>=0.4.0
+
+# Document loaders (PDFs, etc.)
+langchain-community>=0.1.0
+pypdf>=3.0.0
+
+# Text splitting
+langchain-text-splitters>=0.1.0
+
+# Backend API
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# Frontend
+streamlit>=1.28.0
+
+# Utilities
+python-dotenv>=1.0.0
+tiktoken>=0.5.0
+requests>=2.31.0
