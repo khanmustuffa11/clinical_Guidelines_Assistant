@@ -1,44 +1,57 @@
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
-
-from app.config.settings import LLM_MODEL
-from app.rag.prompt import SYSTEM_PROMPT
 from app.rag.retriever import get_vector_db
+from app.config.settings import LLM_MODEL
 
-llm = ChatOpenAI(
-    model=LLM_MODEL,
-    temperature=0
-)
-
-def ask_guidelines(question: str):
+def ask_guidelines(question: str) -> dict:
+    # 1️⃣ Load vector DB
     db = get_vector_db()
 
-    docs = db.similarity_search(question, k=4)
+    # 2️⃣ Retrieve documents (FAIL FAST)
+    try:
+        docs = db.similarity_search(question, k=4)
+    except Exception as e:
+        raise RuntimeError(f"Vector search failed: {e}")
 
     if not docs:
         return {
-            "answer": "Not found in the provided clinical guidelines.",
+            "answer": "No relevant clinical guideline information was found.",
             "sources": []
         }
 
-    context = "\n\n".join(d.page_content for d in docs)
-
-    sources = sorted(
-        {d.metadata.get("source", "unknown") for d in docs}
+    # 3️⃣ Build context safely
+    context = "\n\n".join(
+        f"Source: {d.metadata.get('source', 'unknown')}\n{d.page_content}"
+        for d in docs
     )
 
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=f"""
+    # 4️⃣ Create LLM with timeout
+    llm = ChatOpenAI(
+        model=LLM_MODEL,
+        temperature=0,
+        request_timeout=30
+    )
+
+    prompt = f"""
+You are a clinical decision support assistant.
+Answer ONLY using the provided guideline context.
+If the answer is not present, say you do not know.
+
 Context:
 {context}
 
 Question:
 {question}
-""")
-    ]
+"""
 
-    response = llm(messages)
+    # 5️⃣ Call LLM (FAIL FAST)
+    try:
+        response = llm.invoke(prompt)
+    except Exception as e:
+        raise RuntimeError(f"LLM invocation failed: {e}")
+
+    sources = sorted(
+        {d.metadata.get("source", "unknown") for d in docs}
+    )
 
     return {
         "answer": response.content,
